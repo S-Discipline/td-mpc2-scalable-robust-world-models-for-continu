@@ -1,24 +1,12 @@
 #!/usr/bin/env bash
-# Committed per-branch run configuration.
-#
-# Each experiment node edits this file (a code change on its branch) to select
-# the exact reproduction job. The run command (`bash run.sh`) stays fixed.
-#
-# MODE: eval (offline evaluation of a checkpoint) | train (online RL)
-# For eval: set TASK, MODEL_SIZE, optionally CHECKPOINT (else auto-downloaded
-#   from the published HuggingFace repo). EVAL_EPISODES (default 10).
-# For train: set TASK, MODEL_SIZE, STEPS, and any single-task overrides.
-
-MODE=eval
+# Claim C3 (SimNorm ablation, OFF arm). Retrain a 5M TD-MPC2 agent on
+# walker-walk from scratch for a short budget with SimNorm replaced by an
+# identity (no latent normalization). Compare against the sibling full-agent
+# run (SimNorm on). Reduced-strictness check on one easy task.
+MODE=train
 TASK=walker-walk
 MODEL_SIZE=5
-EVAL_EPISODES=10
+STEPS=400000
+BATCH_SIZE=
 SEED=1
 SAVE_VIDEO=false
-
-# Training
-STEPS=1000000
-# Optional single-task overrides; leave empty to use config defaults.
-BATCH_SIZE=
-SIMNORM_DIM=
-NUM_Q=
