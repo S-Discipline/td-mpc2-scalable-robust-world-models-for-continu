@@ -1,0 +1,22 @@
+# Logging
+logs/
+outputs/
+wandb/
+
+# Byte-compiled
+__pycache__/
+*.py[cod]
+
+# Downloaded checkpoints / data (never commit large artifacts)
+ckpts/
+data/
+**/ckpts/
+**/data/
+
+# Results / reports work dirs
+results/
+*/logs/
+*.pt
+
+.venv/
+venv/
