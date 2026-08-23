@@ -101,7 +101,7 @@ elif [[ "${MODE}" == "train" ]]; then
 	cd "${ROOT}/tdmpc2"
 	args=(task="${TASK}" model_size="${MODEL_SIZE}" steps="${STEPS:-1000000}" enable_wandb=false data_dir="${ROOT}/data")
 	# Optional overrides passed via run_config.sh
-	for key in batch_size seed obs mpc enable_wandb wandb_project simnorm_dim num_q latent_dim mlp_dim enc_dim num_enc_layers; do
+	for key in batch_size seed obs mpc enable_wandb wandb_project simnorm_dim num_q latent_dim mlp_dim enc_dim num_enc_layers compile; do
 		val="$(eval "echo \${${key}:-}")"
 		if [[ -n "${val}" ]]; then
 			args+=("${key}=${val}")
