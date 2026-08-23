@@ -23,11 +23,13 @@ source "${CONFIG}"
 
 echo "======================================"
 echo "TD-MPC2 reproduction run"
-echo "  mode       : ${MODE}"
-echo "  task       : ${TASK}"
-echo "  model_size : ${MODEL_SIZE}"
-echo "  steps      : ${STEPS:-}"
-echo "  checkpoint : ${CHECKPOINT:-}"
+echo "  mode        : ${MODE}"
+echo "  task        : ${TASK}"
+echo "  tasks       : ${TASKS:-}"
+echo "  model_size  : ${MODEL_SIZE}"
+echo "  model_sizes : ${MODEL_SIZES:-}"
+echo "  steps       : ${STEPS:-}"
+echo "  checkpoint  : ${CHECKPOINT:-}"
 echo "======================================"
 
 export PYTHONPATH="${ROOT}:${ROOT}/tdmpc2:${PYTHONPATH:-}"
@@ -43,36 +45,58 @@ fi
 echo "using python: ${PY} ($(${PY} --version 2>&1))"
 ${PY} -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available())"
 
-checkpoint_file=""
-if [[ "${MODE}" == "eval" ]]; then
+eval_one() {
+	local size="$1"
+	local ckpt_file=""
 	if [[ -z "${CHECKPOINT:-}" ]]; then
 		# Derive from task/model_size and download the published checkpoint.
-		base_url="https://huggingface.co/nicklashansen/tdmpc2/resolve/main"
+		local base_url="https://huggingface.co/nicklashansen/tdmpc2/resolve/main"
+		local ckpt_path
 		if [[ "${TASK}" == mt30 || "${TASK}" == mt80 ]]; then
-			CHECKPOINT="${ROOT}/ckpts/${TASK}-${MODEL_SIZE}M.pt"
-			url="${base_url}/multitask/${TASK}-${MODEL_SIZE}M.pt"
+			ckpt_path="multitask/${TASK}-${size}M.pt"
 		else
-			domain="dmcontrol"
-			CHECKPOINT="${ROOT}/ckpts/${TASK}-1.pt"
-			url="${base_url}/${domain}/${TASK}-1.pt"
+			ckpt_path="dmcontrol/${TASK}-1.pt"
 		fi
 		mkdir -p "${ROOT}/ckpts"
-		if [[ ! -f "${CHECKPOINT}" ]]; then
-			echo "download checkpoint: ${url}"
-			wget -q -O "${CHECKPOINT}" "${url}"
+		ckpt_file="${ROOT}/ckpts/${TASK}-${size}M.pt"
+		if [[ ! -f "${ckpt_file}" ]]; then
+			echo "download checkpoint: ${base_url}/${ckpt_path}"
+			wget -q -O "${ckpt_file}" "${base_url}/${ckpt_path}"
 		fi
-		checkpoint_file="${CHECKPOINT}"
-		echo "checkpoint ready: ${checkpoint_file}"
+		ckpt_arg="${ckpt_file}"
+	else
+		ckpt_arg="${CHECKPOINT}"
 	fi
+	echo "---- checkpoint ready: ${ckpt_arg} ----"
 	cd "${ROOT}/tdmpc2"
 	# data_dir is unused by evaluation but must resolve the config's '???'.
-	${PY} evaluate.py task="${TASK}" model_size="${MODEL_SIZE}" \
-		checkpoint="${checkpoint_file}" \
+	${PY} evaluate.py task="${TASK}" model_size="${size}" \
+		checkpoint="${ckpt_arg}" \
 		eval_episodes="${EVAL_EPISODES:-10}" \
 		seed="${SEED:-1}" \
 		save_video="${SAVE_VIDEO:-false}" \
 		data_dir="${ROOT}/data" \
 		enable_wandb=false
+}
+
+if [[ "${MODE}" == "eval" ]]; then
+	if [[ -n "${MODEL_SIZES:-}" ]]; then
+		echo "== multi-size eval loop over: ${MODEL_SIZES} =="
+		for s in ${MODEL_SIZES}; do
+			eval_one "${s}"
+		done
+	elif [[ -n "${TASKS:-}" ]]; then
+		echo "== multi-task eval loop over: ${TASKS} =="
+		for t in ${TASKS}; do
+			# single-task eval: override TASK for this iteration
+			ITER_TASK="${TASK}"
+			TASK="${t}"
+			eval_one "${MODEL_SIZE}"
+			TASK="${ITER_TASK}"
+		done
+	else
+		eval_one "${MODEL_SIZE}"
+	fi
 elif [[ "${MODE}" == "train" ]]; then
 	cd "${ROOT}/tdmpc2"
 	args=(task="${TASK}" model_size="${MODEL_SIZE}" steps="${STEPS:-1000000}" enable_wandb=false data_dir="${ROOT}/data")
