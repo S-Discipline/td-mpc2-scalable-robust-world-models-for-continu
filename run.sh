@@ -33,7 +33,13 @@ echo "======================================"
 export PYTHONPATH="${ROOT}:${ROOT}/tdmpc2:${PYTHONPATH:-}"
 
 # Use any available python; prefer a project venv if present.
-PY="${PYTHON_BIN:-python3}"
+if [[ -n "${PYTHON_BIN:-}" ]]; then
+	PY="${PYTHON_BIN}"
+elif [[ -x /root/venv/bin/python ]]; then
+	PY=/root/venv/bin/python
+else
+	PY=python3
+fi
 echo "using python: ${PY} ($(${PY} --version 2>&1))"
 ${PY} -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available())"
 
