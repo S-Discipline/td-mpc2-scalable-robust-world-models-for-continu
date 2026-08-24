@@ -1,16 +1,28 @@
 # TD-MPC2: Reproducing "Scalable, Robust World Models for Continuous Control"
 
-A claim-by-claim reproduction of [TD-MPC2 — Scalable, Robust World Models for
-Continuous Control](https://arxiv.org/abs/2310.16828) (Hansen, Su & Wang, ICLR
-2024), run on a single NVIDIA L4 GPU. **The headline result below is the
-scaling claim — and it reproduces almost exactly.**
+**Overall verdict: D — 仅运行成功 (the code runs, but the paper's core claims
+are not verified).** A claim-by-claim reproduction attempt of
+[TD-MPC2 — Scalable, Robust World Models for Continuous Control](https://arxiv.org/abs/2310.16828)
+(Hansen, Su & Wang, ICLR 2024), run on a single NVIDIA L4 GPU.
 
-![Headline: agent capability scales with model size (paper vs observed)](images/fig1_scaling.png)
+> **Read this first — what "reproduced" means here.**
+> The numbers from *training our own code* and from *re-evaluating the authors'
+> published checkpoints* are fundamentally different evidence. In this report:
+> - **Only two results were produced by training our code from scratch**
+>   (walker-walk, 5M, 250k steps, single seed × 2 conditions). These are the only
+>   genuine reproductions.
+> - **Everything else** (the scaling-normalized-scores figure below, the
+>   single-task returns) came from **downloading the authors' official
+>   checkpoints and re-evaluating them**. That validates our *evaluation harness*
+>   and the released models' benchmark scores, but it is **not** evidence that
+>   our code / the algorithm reproduces those results.
 
-Across four published model sizes (1M, 5M, 19M, 48M) evaluated on the
-30-task DMControl multi-task set, the normalized scores we measure land within a
-fraction of a point of the paper's reported values — monotonically increasing
-from **18.7 → 29.9 → 54.4 → 59.4** (paper: 18.9, 28.3, 54.2, 59.4).
+![Scaling at 4 model sizes: observed (from official checkpoints) vs paper](images/fig1_scaling.png)
+
+Because the scaling numbers in the figure were produced by evaluating the
+authors' own checkpoints (not by training), the close alignment is expected and
+does **not** constitute reproduction of the scaling claim. The claim "agent
+capability scales with model size" was **not** reproduced by this work.
 
 ## What is TD-MPC2 and what is it claiming?
 
@@ -68,121 +80,125 @@ immutable-source contract clean: the logged commit is exactly the code that ran.
 
 ---
 
-## Headline claim: agent capabilities scale with model size
+## Headline claim: agent capabilities scale with model size — NOT reproduced by this work
 
-The paper trains multi-task world models at 1M, 5M, 19M, 48M and 317M parameters
+The paper *trains* multi-task world models at 1M, 5M, 19M, 48M and 317M parameters
 on a large offline dataset and reports a single **normalized score** (mean over
 tasks of reward/10 for DMControl and per-task success×100 for Meta-World). Its
-central scaling claim is that capability rises monotonically with model size, and
-performance has not yet saturated.
+central scaling claim is that capability rises monotonically with model size.
 
-We reproduced this by **offline evaluation** of the officially published checkpoints
-on the 30-task DMControl multi-task set (`mt30`), 10 episodes per task, 30 tasks,
-at four of the five sizes:
+**We did not train any multi-task model.** We only *downloaded the authors'
+published checkpoints* and re-evaluated them on the 30-task DMControl set
+(`mt30`), 10 episodes per task, 30 tasks, at four sizes:
 
-| Model (M params) | Paper `mt30` score | **Observed** | Match |
+| Model (M params) | Paper `mt30` score | **Observed (from authors' ckpts)** | Note |
 |---|---|---|---|
-| 1  | 18.9  | **18.66** | ✓ |
-| 5  | 28.3  | **29.89** | ✓ |
-| 19 | 54.2  | **54.36** | ✓ |
-| 48 | 59.4  | **59.38** | ✓ |
+| 1  | 18.9  | 18.66 | evaluating authors' own model |
+| 5  | 28.3  | 29.89 | evaluating authors' own model |
+| 19 | 54.2  | 54.36 | evaluating authors' own model |
+| 48 | 59.4  | 59.38 | evaluating authors' own model |
 
-The observed values track the paper within **~0.5 points of score** at every size,
-and the scaling relationship (normalized score rising with log model size) is
-reproduced exactly. This is the strongest finding of the reproduction.
+These numbers merely confirm that the *released checkpoints* score as the authors
+report and that our `evaluate.py` harness is consistent. They are **not** produced
+by training and therefore do **not** reproduce the scaling claim ("capability
+scales with model size"), which requires training models of different sizes from
+data. **Assessment: not reproduced (insufficient evidence).**
 
-> **Substitution noted:** the paper's headline figure uses the 80-task set
-> (DMControl + Meta-World). We evaluated the 30-task DMControl-only set (`mt30`)
-> because Meta-World is effectively uninstallable on this box without breaking the
-> working MuJoCo/gym stack. The paper reports an mt30 scaling curve with the same
-> shape and the exact numbers above, so we reproduce on that set. The 317M
-> checkpoint was not evaluated (largest size; not worth the multi-hour run on one
-> L4 for an already-clear trend). Full 80-task reproduction would additionally
-> need Meta-World installed and the 80-task checkpoints/dataset.
-
-The direction and magnitude of the paper's central claim are confirmed.
+> Differences from the paper's evaluation setup that prevent direct comparison
+> even as a checkpoint check: we used the 30-task `mt30` DMControl set (paper's
+> headline uses 80 tasks, DMControl + Meta-World, which is not installable on this
+> box); 10 episodes/task, single seed; not the authors' exact eval seeds/conditions.
 
 ---
 
-## Claim: single-task RL reaches the reported performance (one hyperparameter set)
+## Claim: single-task RL reaches the reported performance (one hyperparameter set) — partially corroborated, not reproduced
 
 A second claim is that with one hyperparameter set, single-task TD-MPC2 reaches
-strong data-efficient performance and beats prior methods. The comparison-against-baselines
-part (SAC, DreamerV3, TD-MPC) requires re-training those baselines, which we did
-**not** do — instead we verified the load-bearing half: that the released 5M
-single-task agents actually attains the paper's reported asymptotic scores.
+strong data-efficient performance and beats prior methods. As with scaling, we did
+**not** train these — we re-evaluated the authors' published 5M single-task
+checkpoints. The comparison-against-baselines part (SAC, DreamerV3, TD-MPC) was
+**not** run.
 
-![Single-task DMControl: observed returns vs paper asymptotic range](images/fig2_singletask.png)
+![Single-task DMControl: observed (authors' checkpoints) vs paper asymptotic range](images/fig2_singletask.png)
 
-Evaluating the published 5M single-task checkpoints:
+Evaluating the authors' published 5M single-task checkpoints:
 
-| Task          | Observed return | Paper asymptotic (approx.) |
+| Task          | Observed return (authors' ckpt) | Paper asymptotic (approx.) |
 |---|---|---|
-| walker-walk   | **982.9**  | ~950–1000 |
-| cheetah-run   | **837.0**  | ~850–900 |
-| hopper-hop    | **433.0**  | ~350–500 |
-| dog-run       | **752.3**  | ~700–800 |
+| walker-walk   | 982.9  | ~950–1000 |
+| cheetah-run   | 837.0  | ~850–900 |
+| hopper-hop    | 433.0  | ~350–500 |
+| dog-run       | 752.3  | ~700–800 |
 
-Every observed value falls inside the paper's reported asymptotic band, including
-the high-dimensional `dog-run` (38 action dims) where the paper highlights large
-TD-MPC2 margins. This confirms the released agents reproduce the paper's claimed
-single-task asymptotic performance. The *comparative* half of the claim (TD-MPC2
-beats SAC/DreamerV3/TD-MPC) is outside this budget and left unattempted.
+These fall inside the paper's reported bands, confirming the released models score
+as reported. They are **not** produced by training, so the single-task
+data-efficiency / beats-baselines claim is **not reproduced** here. Assessment:
+**partially corroborated (checkpoint re-evaluation only), comparative baselines not
+attempted.**
 
 ---
 
-## Claim: data-efficient online training behaviour
+## Claim: data-efficient online training behaviour — the one directly reproduced result
 
-To see the *training* behaviour of the algorithm — not just its converged
-checkpoints — we retrained a 5M TD-MPC2 agent from scratch on `walker-walk`
-(250k environment steps). This is the DMControl task where TD-MPC2's learning
-curve in the paper rises steeply to near-maximum return.
+To get genuine evidence from *training*, we retrained a 5M TD-MPC2 agent from
+scratch on `walker-walk` (250k environment steps, **single seed**, 1 NVIDIA L4).
+This is the only place in this report where the numbers were produced by running
+`train.py` on our own code.
 
 ![Walker-walk online training: full agent vs no-SimNorm](images/fig3_training_ablation.png)
 
 The agent goes from random-init reward (~35) to **~980** out of 1000 within about
 100k steps and saturates near the maximum, matching the paper's fast,
-data-efficient learning curve for this task.
+data-efficient learning curve for this task. Assessment: **consistent in
+direction with the paper's walker-walk curve, but single seed and no directly
+comparable paper figure/metric (the paper's Fig. 12 curves are not reproduced in a
+machine-readable table), so this is directional support only.**
 
 ---
 
-## Claim: SimNorm is "essential to training stability" (ablation)
+## Claim: SimNorm is "essential to training stability" (ablation) — inconclusive
 
-We reproduced the same walker-walk run with **SimNorm removed** (the latent
-normalization replaced by an identity module — the only code change on that
-branch). The paper's ablation shows SimNorm matters most on the *hardest* tasks
-(Dog Run, Humanoid Walk) and in 19M multi-task training; it is the design choice
-whose loss damages stability.
+We ran the same walker-walk training with **SimNorm removed** (latent
+normalization replaced by an identity — the only code change on that branch).
 
 ![Walker-walk training: the no-SimNorm ablation does not diverge here](images/fig4_dataefficiency.png)
 
-On the easy `walker-walk` task the two arms are **indistinguishable**:
+On the easy `walker-walk` task the two arms are **indistinguishable** (single
+seed each):
 
 | Condition      | train return | eval return |
 |---|---|---|
 | Full (SimNorm on)  | 971.4 | 981.5 |
 | No SimNorm         | 978.6 | 981.7 |
 
-**Assessment: inconclusive under this setup.** In our reduced-strictness, single
-easy task, removing SimNorm did **not** degrade or destabilize learning, so we do
-not observe the reported effect here. This is the expected outcome — walker-walk is
-not in the regime where the paper shows SimNorm matters (the effect appears on
-hard tasks and in large multi-task models). We explicitly do not interpret this as
-challenging the claim; reproducing the effect would require the hard-task or
-multi-task setting that this compute window cannot reach.
+**Assessment: inconclusive under this setup.** The paper's own ablation shows
+SimNorm's effect on the *hardest* tasks (Dog Run, Humanoid Walk) and in 19M
+multi-task training. Our single, easy, single-seed walker-walk test is not in the
+regime where the paper reports the effect, so we neither support nor refute the
+claim from this evidence.
 
 ---
 
 ## Claim status summary
 
-| Claim | Paper result | Observed | Assessment |
+Evidence is labelled by how it was produced: **trained** (numbers from running
+`train.py` on our code) vs **ckpt-eval** (numbers from re-evaluating the authors'
+downloadable checkpoints). Only trained numbers count toward reproduction.
+
+| Claim | Paper result | Observed (evidence type) | Assessment |
 |---|---|---|---|
-| **Scaling** — capability ↑ with model size | mt30: 18.9/28.3/54.2/59.4 | mt30: **18.7/29.9/54.4/59.4** | **Aligned** (within ~0.5 pt) |
-| **Single-task** asymptotic (4 tasks) | ~max bands | falls in band at all 4 tasks | **Aligned** |
-| **Online training** behaviour | fast rise to ~max | rises ~35→980 in 100k steps | **Aligned** |
-| SimNorm ablation (stability essential) | large effect on hard/multi-task | no effect on easy walker-walk | **Inconclusive** (wrong regime) |
-| Baselines (beats SAC/DreamerV3/TD-MPC) | strong wins | not attempted | **Not attempted** |
-| Full 80-task + 317M scaling | 16.0→70.6 | 30-task set, ≤48M | **Partially** (substituted) |
+| **Scaling** — capability ↑ with model size | mt30 18.9/28.3/54.2/59.4 | 18.7/29.9/54.4/59.4 (ckpt-eval) | **Not reproduced** (no training evidence) |
+| Single-task asymptotic | ~max bands | in-band ×4 (ckpt-eval) | Partially corroborated (ckpt only) |
+| **Online training** (walker-walk) | fast rise to near-max | 35 → ~980 in 100k steps (**trained**, 1 seed) | **Directionally consistent** |
+| SimNorm ablation (stability) | effect on hard/multi-task | no effect on easy walker-walk (trained, 1 seed) | Inconclusive |
+| Beats SAC/DreamerV3/TD-MPC | strong wins | not attempted | Not attempted |
+| 80-task + 317M scaling | 16.0 → 70.6 | 30-task set, ≤48M, ckpt-eval | Not reproduced |
+
+**Verdict: D — 仅运行成功.** The code runs and produces results, but the paper's
+*core* conclusions (scaling through training; beating baselines; cross-domain
+robustness with one hyperparameter set) are not verified: they lack training
+evidence, valid baselines, multiple seeds, and paper-comparable metrics. The only
+directly reproduced evidence is directional (one task, one seed, walker-walk).
 
 ### What a full-scale reproduction would still need
 
@@ -207,11 +223,11 @@ Branches and their committed `run_config.sh`:
 
 | Experiment | Branch | Purpose | Command | Assessment |
 |---|---|---|---|---|
-| Walker-walk eval (root) | `orx/eval-single-task-walker-walk-baseline-infra` | Baseline infra + walker-walk checkpoint | `bash run.sh` (eval walker-walk 5M) | Aligned (R 982.9) |
-| Scaling mt30 | `orx/scaling-offline-eval-of-mt80-checkpoints-1m-5m-1` | Published mt30 checkpoints 1/5/19/48M | `bash run.sh` (eval mt30 ×4 sizes) | **Aligned** |
-| Single-task DMControl | `orx/single-task-eval-multiple-dmcontrol-tasks-c1` | Published 5M checkpoints ×4 tasks | `bash run.sh` (eval 4 tasks) | Aligned |
-| Retrain walker-walk (full) | `orx/short-budget-retrain-walker-walk-full-vs-no-simn` | 250k-step re-train, SimNorm on | `bash run.sh` (train walker-walk) | Aligned (R ~981) |
-| Retrain walker-walk (no-SimNorm) | `orx/short-budget-train-walker-walk-no-simnorm-c3-abl` | 250k-step re-train, SimNorm off | `bash run.sh` (train walker-walk) | Inconclusive (R ~982) |
+| Walker-walk eval (root) | `orx/eval-single-task-walker-walk-baseline-infra` | Baseline infra + walker-walk ckpt-eval | `bash run.sh` (eval walker-walk 5M) | ckpt-eval R 982.9 |
+| Scaling mt30 | `orx/scaling-offline-eval-of-mt80-checkpoints-1m-5m-1` | ckpt-eval mt30 @ 1/5/19/48M | `bash run.sh` (eval mt30 ×4 sizes) | Not reproduction (ckpt-eval) |
+| Single-task DMControl | `orx/single-task-eval-multiple-dmcontrol-tasks-c1` | ckpt-eval 5M ×4 tasks | `bash run.sh` (eval 4 tasks) | ckpt-eval |
+| Retrain walker-walk (full) | `orx/short-budget-retrain-walker-walk-full-vs-no-simn` | 250k-step train, SimNorm on | `bash run.sh` (train walker-walk) | trained R ~981 (1 seed) |
+| Retrain walker-walk (no-SimNorm) | `orx/short-budget-train-walker-walk-no-simnorm-c3-abl` | 250k-step train, SimNorm off | `bash run.sh` (train walker-walk) | trained R ~982, inconclusive |
 
 Data behind the figures: [`artifacts/scaling/scaling_mt30.json`](../../artifacts/scaling/scaling_mt30.json),
 `artifacts/simnorm_on_curve.json`, `artifacts/simnorm_off_curve.json`.
